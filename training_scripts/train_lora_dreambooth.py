@@ -746,6 +746,7 @@ def main(args):
         num_training_steps=args.max_train_steps * args.gradient_accumulation_steps,
     )
 
+    print("Starting accelerator.prepare()...")
     if args.train_text_encoder:
         (
             unet,
@@ -760,6 +761,7 @@ def main(args):
         unet, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
             unet, optimizer, train_dataloader, lr_scheduler
         )
+    print("Finished accelerator.prepare()")
 
     weight_dtype = torch.float32
     if accelerator.mixed_precision == "fp16":
@@ -770,9 +772,13 @@ def main(args):
     # Move text_encode and vae to gpu.
     # For mixed precision training we cast the text_encoder and vae weights to half-precision
     # as these models are only used for inference, keeping weights in full precision is not required.
+    print(f"Moving VAE to {accelerator.device} with dtype {weight_dtype}...")
     vae.to(accelerator.device, dtype=weight_dtype)
+    print("VAE moved successfully")
     if not args.train_text_encoder:
+        print(f"Moving text_encoder to {accelerator.device}...")
         text_encoder.to(accelerator.device, dtype=weight_dtype)
+        print("text_encoder moved successfully")
 
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
     num_update_steps_per_epoch = math.ceil(
@@ -785,8 +791,10 @@ def main(args):
 
     # We need to initialize the trackers we use, and also store our configuration.
     # The trackers initializes automatically on the main process.
+    print("Initializing trackers...")
     if accelerator.is_main_process:
         accelerator.init_trackers("dreambooth", config=vars(args))
+    print("Trackers initialized")
 
     # Train!
     total_batch_size = (
@@ -814,11 +822,15 @@ def main(args):
     last_save = 0
 
     for epoch in range(args.num_train_epochs):
+        print(f"\n========== Starting Epoch {epoch + 1}/{args.num_train_epochs} ==========")
         unet.train()
         if args.train_text_encoder:
             text_encoder.train()
 
+        print("Starting training loop...")
         for step, batch in enumerate(train_dataloader):
+            if step == 0:
+                print(f"Processing first batch (step {step})...")
             # Convert images to latent space
             latents = vae.encode(
                 batch["pixel_values"].to(dtype=weight_dtype)
@@ -893,6 +905,10 @@ def main(args):
             optimizer.zero_grad()
 
             global_step += 1
+            
+            # Log progress every 10 steps
+            if step % 10 == 0:
+                print(f"Epoch {epoch + 1}, Step {step}, Global Step {global_step}, Loss: {loss.item():.4f}")
 
             # Checks if the accelerator has performed an optimization step behind the scenes
             if accelerator.sync_gradients:
