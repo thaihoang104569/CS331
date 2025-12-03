@@ -141,12 +141,6 @@ image_after = pipe("a photo of sks person", num_inference_steps=50).images[0]
 image_after.save("after.png")
 ```
 
-### 4. Jupyter Notebooks
-
-Demo tương tác trong `scripts/`:
-- **`run_inference.ipynb`** - Text-to-image với LoRA
-- **`run_img2img.ipynb`** - Image-to-image với LoRA
-
 ## Tham số Training quan trọng
 
 | Tham số | Mô tả | Khuyến nghị |
@@ -223,13 +217,8 @@ lora/
 │   ├── utils.py                   # Utilities
 │   ├── lora_manager.py            # Multi-LoRA management
 │   └── xformers_utils.py          # Memory optimization
-├── training_scripts/              # Training scripts
-│   ├── train_lora_dreambooth.py   # Main DreamBooth trainer
-│   ├── run_lora_db_unet_only.sh   # Example: UNet only
-│   └── run_lora_db_w_text.sh      # Example: UNet + Text
-└── scripts/                       # Jupyter notebooks
-    ├── run_inference.ipynb        # Text-to-image demo
-    └── run_img2img.ipynb          # Img2img demo
+└── training_scripts/              # Training scripts
+    └── train_lora_dreambooth.py   # Main DreamBooth trainer
 ```
 
 ## Xử lý lỗi
