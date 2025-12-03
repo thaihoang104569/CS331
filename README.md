@@ -64,32 +64,55 @@ python training_scripts/train_lora_dreambooth.py \
   --instance_prompt="a photo of sks person" \
   --resolution=512 \
   --train_batch_size=1 \
-  --gradient_accumulation_steps=1 \
+  --gradient_accumulation_steps=4 \
   --learning_rate=1e-4 \
   --lr_scheduler="constant" \
   --lr_warmup_steps=0 \
-  --max_train_steps=3000 \
-  --lora_rank=4 \
+  --max_train_steps=5000 \
+  --save_steps=1000 \
+  --lora_rank=8 \
   --output_format="safe"
 ```
 
-#### Training nâng cao (UNet + Text Encoder):
+**Khuyến nghị cho face/person:**
+- `--lora_rank=8`: Capacity cao hơn, học facial features tốt hơn
+- `--max_train_steps=5000`: Đủ để converge với 10-20 ảnh
+- `--gradient_accumulation_steps=4`: Smooth loss, ổn định hơn
+- `--save_steps=1000`: Lưu checkpoint để so sánh
+
+#### Training tối ưu (UNet + Text Encoder):
 ```bash
 python training_scripts/train_lora_dreambooth.py \
   --pretrained_model_name_or_path="runwayml/stable-diffusion-v1-5" \
   --instance_data_dir="my_training_data" \
-  --output_dir="output/my_lora" \
+  --output_dir="output/my_lora_best" \
   --instance_prompt="a photo of sks person" \
   --resolution=512 \
   --train_batch_size=1 \
+  --gradient_accumulation_steps=4 \
   --learning_rate=1e-4 \
   --learning_rate_text=5e-5 \
   --train_text_encoder \
   --color_jitter \
-  --max_train_steps=2000 \
-  --lora_rank=4 \
+  --center_crop \
+  --max_train_steps=6000 \
+  --save_steps=1000 \
+  --lora_rank=16 \
   --output_format="safe"
 ```
+
+**Tối ưu cho facial features:**
+- `--train_text_encoder`: **Quan trọng** - học được token = face identity
+- `--lora_rank=16`: Capacity rất cao, chi tiết facial tốt nhất
+- `--learning_rate_text=5e-5`: LR thấp hơn cho text encoder
+- `--center_crop`: Focus vào center (mặt)
+- `--max_train_steps=6000`: Train lâu hơn với text encoder
+- Thay `uniquename` bằng tên unique của bạn (VD: `thaihoang_cs331`)
+
+**Lưu ý về thời gian:**
+- UNet only (rank 8, 5000 steps): ~1-1.5 giờ
+- UNet + Text (rank 16, 6000 steps): ~2.5-3 giờ
+- Kaggle cho 9 giờ → Có thể train multiple runs hoặc thử rank cao hơn
 
 ### 3. Test LoRA (Inference)
 
@@ -145,13 +168,22 @@ image_after.save("after.png")
 
 | Tham số | Mô tả | Khuyến nghị |
 |---------|-------|-------------|
-| `--lora_rank` | Rank của ma trận LoRA (cao hơn = capacity cao hơn) | 4, 8, hoặc 16 |
-| `--learning_rate` | Learning rate cho UNet | 1e-4 |
-| `--learning_rate_text` | Learning rate cho text encoder | 5e-5 |
-| `--max_train_steps` | Tổng số bước training | 2000-5000 |
-| `--train_text_encoder` | Fine-tune cả text encoder | Khuyến nghị |
-| `--gradient_checkpointing` | Giảm memory usage | Cho VRAM hạn chế |
-| `--use_8bit_adam` | Dùng 8-bit Adam optimizer | Cho VRAM hạn chế |
+| `--lora_rank` | Rank của ma trận LoRA (cao hơn = capacity cao hơn) | UNet only: 8, With text: 16 |
+| `--learning_rate` | Learning rate cho UNet | 1e-4 (ổn định) |
+| `--learning_rate_text` | Learning rate cho text encoder | 5e-5 (thấp hơn UNet) |
+| `--max_train_steps` | Tổng số bước training | UNet: 5000, With text: 6000 |
+| `--gradient_accumulation_steps` | Accumulate gradients (smooth loss) | 4 (khuyến nghị cho stability) |
+| `--train_text_encoder` | Fine-tune cả text encoder | **Bắt buộc cho face/person** |
+| `--center_crop` | Crop center của ảnh | Khuyến nghị cho portrait |
+| `--save_steps` | Lưu checkpoint mỗi N steps | 1000 (để so sánh) |
+| `--gradient_checkpointing` | Giảm memory usage | Cho VRAM < 16GB |
+| `--use_8bit_adam` | Dùng 8-bit Adam optimizer | Cho VRAM < 12GB |
+
+**Tips quan trọng:**
+- **Face/Person training:** Phải dùng `--train_text_encoder` + rank cao (16) để học facial features
+- **Alpha inference:** Dùng 0.7-0.9 cho kết quả tốt nhất, tránh > 1.0 (gây distortion)
+- **Prompt:** Dùng unique token (VD: `thaihoang_cs331`) thay vì generic `sks`
+- **Convergence:** Loss nên < 0.05 sau 3000 steps, < 0.02 sau 5000 steps
 
 ## Tính năng nâng cao
 
@@ -222,6 +254,25 @@ lora/
 ```
 
 ## Xử lý lỗi
+
+**Q: Kết quả inference không giống training data?**  
+A: Kiểm tra:
+- ✅ Prompt inference **phải khớp** với prompt training (VD: `thaihoang_cs331` không phải `sks`)
+- ✅ Alpha nên dùng 0.7-0.9, tránh > 1.0 gây distortion
+- ✅ Phải dùng `--train_text_encoder` cho face/person training
+- ✅ Tăng `--lora_rank` lên 16 nếu khuôn mặt không rõ
+
+**Q: Khuôn mặt bị vỡ/distorted?**  
+A: 
+- Alpha quá cao (>1.0) → Giảm xuống 0.7-0.9
+- Tăng `--guidance_scale=9.0` và `--num_inference_steps=80`
+- Train lại với rank cao hơn (`--lora_rank=16`)
+
+**Q: Model học được pose/clothes nhưng mặt sai?**  
+A:
+- **Bắt buộc** dùng `--train_text_encoder` + `--lora_rank=16`
+- Thêm `--center_crop` để focus vào mặt
+- Train lâu hơn: 6000 steps thay vì 3000
 
 **Q: Out of memory khi training?**  
 A: Dùng `--gradient_checkpointing`, `--use_8bit_adam`, giảm `--train_batch_size` xuống 1
