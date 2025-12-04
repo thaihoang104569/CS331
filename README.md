@@ -251,7 +251,7 @@ lora/
 
 **Q: Kết quả inference không giống training data?**  
 A: Kiểm tra:
-- ✅ Prompt inference **phải khớp** với prompt training (VD: `thaihoang_cs331` không phải `sks`)
+- ✅ Prompt inference **phải khớp** với prompt training
 - ✅ Alpha nên dùng 0.7-0.9, tránh > 1.0 gây distortion
 - ✅ Phải dùng `--train_text_encoder` cho face/person training
 - ✅ Tăng `--lora_rank` lên 16 nếu khuôn mặt không rõ
