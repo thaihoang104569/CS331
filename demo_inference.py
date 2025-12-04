@@ -19,8 +19,8 @@ def main():
     parser.add_argument(
         "--model_id",
         type=str,
-        default="runwayml/stable-diffusion-v1-5",
-        help="Pretrained Stable Diffusion model ID"
+        default="SG161222/Realistic_Vision_V5.1_noVAE",
+        help="Pretrained Stable Diffusion model ID (RealisticVision V5.1 for better face quality)"
     )
     parser.add_argument(
         "--lora_path",
