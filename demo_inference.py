@@ -19,7 +19,7 @@ def main():
     parser.add_argument(
         "--model_id",
         type=str,
-        default="SG161222/Realistic_Vision_V5.1_noVAE",
+        default="SG161222/Realistic_Vision_V5.1",
         help="Pretrained Stable Diffusion model ID (RealisticVision V5.1 for better face quality)"
     )
     parser.add_argument(

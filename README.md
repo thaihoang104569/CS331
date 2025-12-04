@@ -60,7 +60,7 @@ Khuyến nghị: 5-20 ảnh của đối tượng/style của bạn.
 #### Training cơ bản (UNet only):
 ```bash
 python training_scripts/train_lora_dreambooth.py \
-  --pretrained_model_name_or_path="SG161222/Realistic_Vision_V5.1_noVAE" \
+  --pretrained_model_name_or_path="SG161222/Realistic_Vision_V5.1" \
   --instance_data_dir="my_training_data" \
   --output_dir="output/my_lora" \
   --instance_prompt="a photo of sks person" \
@@ -85,7 +85,7 @@ python training_scripts/train_lora_dreambooth.py \
 #### Training tối ưu (UNet + Text Encoder):
 ```bash
 python training_scripts/train_lora_dreambooth.py \
-  --pretrained_model_name_or_path="SG161222/Realistic_Vision_V5.1_noVAE" \
+  --pretrained_model_name_or_path="SG161222/Realistic_Vision_V5.1" \
   --instance_data_dir="my_training_data" \
   --output_dir="output/my_lora_best" \
   --instance_prompt="a photo of sks person" \
@@ -134,7 +134,7 @@ from lora_diffusion import patch_pipe, tune_lora_scale
 
 # Load Stable Diffusion
 pipe = StableDiffusionPipeline.from_pretrained(
-    "SG161222/Realistic_Vision_V5.1_noVAE",
+    "SG161222/Realistic_Vision_V5.1",
     torch_dtype=torch.float16
 ).to("cuda")
 
