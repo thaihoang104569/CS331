@@ -19,8 +19,8 @@ def main():
     parser.add_argument(
         "--model_id",
         type=str,
-        default="SG161222/Realistic_Vision_V5.1",
-        help="Pretrained Stable Diffusion model ID (RealisticVision V5.1 for better face quality)"
+        default="stablediffusionapi/realistic-vision-v51",
+        help="Pretrained Stable Diffusion model ID (Realistic Vision V5.1 for best face quality)"
     )
     parser.add_argument(
         "--lora_path",
