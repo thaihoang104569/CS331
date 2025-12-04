@@ -35,6 +35,12 @@ def main():
         help="Text prompt for image generation"
     )
     parser.add_argument(
+        "--negative_prompt",
+        type=str,
+        default="ugly, blurry, low quality, distorted face, bad anatomy, bad hands, deformed",
+        help="Negative prompt to avoid unwanted features"
+    )
+    parser.add_argument(
         "--alphas",
         type=float,
         nargs="+",
@@ -131,6 +137,7 @@ def main():
         with torch.no_grad():
             image = pipe(
                 args.prompt,
+                negative_prompt=args.negative_prompt,
                 num_inference_steps=args.num_inference_steps,
                 guidance_scale=args.guidance_scale
             ).images[0]
