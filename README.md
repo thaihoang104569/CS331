@@ -82,13 +82,53 @@ python training_scripts/train_lora_dreambooth.py \
 - `--gradient_accumulation_steps=4`: Smooth loss, ổn định hơn
 - `--save_steps=1000`: Lưu checkpoint để so sánh
 
-#### Training tối ưu (UNet + Text Encoder):
+#### Training với Prior Preservation (Khuyên dùng - theo paper gốc):
+```bash
+python training_scripts/train_lora_dreambooth.py \
+  --pretrained_model_name_or_path="stablediffusionapi/realistic-vision-v51" \
+  --instance_data_dir="my_training_data" \
+  --output_dir="output/my_lora_prior" \
+  --instance_prompt="a photo of sks person" \
+  --with_prior_preservation \
+  --class_data_dir="class_images" \
+  --class_prompt="a photo of person" \
+  --num_class_images=200 \
+  --prior_loss_weight=1.0 \
+  --resolution=512 \
+  --train_batch_size=1 \
+  --gradient_accumulation_steps=4 \
+  --learning_rate=1e-4 \
+  --max_train_steps=5000 \
+  --save_steps=1000 \
+  --lora_rank=8 \
+  --output_format="safe"
+```
+
+**Prior Preservation giúp:**
+- ✅ **Tránh overfitting**: Model không quên kiến thức chung về class "person"
+- ✅ **Tránh language drift**: Từ "person" vẫn giữ ý nghĩa gốc
+- ✅ **Generalize tốt hơn**: Linh hoạt với pose, lighting, angle mới
+- ✅ **Tự động generate**: Code sẽ tự tạo 200 ảnh class nếu chưa có
+
+**Tham số quan trọng:**
+- `--with_prior_preservation`: Bật prior preservation loss
+- `--class_data_dir`: Thư mục chứa ảnh class (tự động tạo nếu chưa có)
+- `--class_prompt`: Prompt cho class images (VD: "a photo of person")
+- `--num_class_images`: Số ảnh class cần có (200 là tốt)
+- `--prior_loss_weight`: Trọng số của prior loss (1.0 = cân bằng) (1.0 = cân bằng)
+
+#### Training tối ưu nhất (Prior Preservation + Text Encoder):on + Text Encoder):
 ```bash
 python training_scripts/train_lora_dreambooth.py \
   --pretrained_model_name_or_path="stablediffusionapi/realistic-vision-v51" \
   --instance_data_dir="my_training_data" \
   --output_dir="output/my_lora_best" \
   --instance_prompt="a photo of sks person" \
+  --with_prior_preservation \
+  --class_data_dir="class_images" \
+  --class_prompt="a photo of person" \
+  --num_class_images=200 \
+  --prior_loss_weight=1.0 \
   --resolution=512 \
   --train_batch_size=1 \
   --gradient_accumulation_steps=4 \
@@ -104,11 +144,18 @@ python training_scripts/train_lora_dreambooth.py \
 ```
 
 **Tối ưu cho facial features:**
+- `--with_prior_preservation`: **Rất quan trọng** - tránh overfitting và language drift
 - `--train_text_encoder`: **Quan trọng** - học được token = face identity
 - `--lora_rank=16`: Capacity rất cao, chi tiết facial tốt nhất
 - `--learning_rate_text=5e-5`: LR thấp hơn cho text encoder
 - `--center_crop`: Focus vào center (mặt)
-- `--max_train_steps=6000`: Train lâu hơn với text encoder
+- `--num_class_images=200`: Đủ để giữ kiến thức class
+- `--max_train_steps=6000`: Train lâu hơn với text encoder + prior preservation
+
+**Sau khi train xong, bạn sẽ có:**
+- `output/my_lora_best/lora_weight.safetensors` - LoRA weights
+- `output/my_lora_best/loss_curve.png` - Biểu đồ loss theo training steps
+- `output/my_lora_best/logs/` - TensorBoard logs để xem chi tiết
 
 ### 3. Test LoRA (Inference)
 
