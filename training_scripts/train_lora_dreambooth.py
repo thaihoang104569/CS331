@@ -46,6 +46,9 @@ from pathlib import Path
 
 import random
 import re
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend
+import matplotlib.pyplot as plt
 
 
 class DreamBoothDataset(Dataset):
@@ -859,6 +862,9 @@ def main(args):
     progress_bar.set_description("Steps")
     global_step = 0
     last_save = 0
+    
+    # Track loss for visualization
+    loss_history = []
 
     for epoch in range(args.num_train_epochs):
         print(f"\n========== Starting Epoch {epoch + 1}/{args.num_train_epochs} ==========")
@@ -1023,6 +1029,9 @@ def main(args):
             logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
+            
+            # Track loss
+            loss_history.append((global_step, logs["loss"]))
 
             if global_step >= args.max_train_steps:
                 break
@@ -1054,6 +1063,36 @@ def main(args):
             save_safeloras(loras, args.output_dir + "/lora_weight.safetensors")
         
         print(f"LoRA weights saved to {args.output_dir}")
+        
+        # Plot loss curve
+        if loss_history:
+            try:
+                steps, losses = zip(*loss_history)
+                plt.figure(figsize=(10, 6))
+                plt.plot(steps, losses, alpha=0.6, label='Loss')
+                
+                # Add smoothed line
+                if len(losses) > 10:
+                    window = max(len(losses) // 50, 10)
+                    smoothed = []
+                    for i in range(len(losses)):
+                        start = max(0, i - window)
+                        smoothed.append(sum(losses[start:i+1]) / (i - start + 1))
+                    plt.plot(steps, smoothed, color='red', linewidth=2, label='Smoothed')
+                
+                plt.xlabel('Training Steps')
+                plt.ylabel('Loss')
+                plt.title('Training Loss')
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+                
+                loss_plot_path = f"{args.output_dir}/loss_curve.png"
+                plt.savefig(loss_plot_path, dpi=150, bbox_inches='tight')
+                plt.close()
+                print(f"Loss curve saved to {loss_plot_path}")
+                print(f"Final loss: {losses[-1]:.4f}")
+            except Exception as e:
+                print(f"Could not plot loss: {e}")
 
         if args.push_to_hub:
             repo.push_to_hub(
