@@ -207,6 +207,26 @@ image_after = pipe("a photo of sks person", num_inference_steps=50).images[0]
 image_after.save("after.png")
 ```
 
+#### Web Interface (Gradio):
+```bash
+# Local
+python web_app.py
+
+# Google Colab
+!git clone https://github.com/thaihoang104569/gigi.git
+%cd gigi
+!pip install -r requirements.txt
+!python web_app.py
+# Click vào public URL để dùng
+```
+
+Web interface cho phép:
+- Load model và LoRA qua giao diện
+- Nhập prompt và negative prompt
+- Điều chỉnh alpha, steps, guidance scale
+- So sánh nhiều alpha values
+- Chạy trên Colab, truy cập từ bất kỳ thiết bị nào
+
 ## Tham số Training quan trọng
 
 | Tham số | Mô tả | Khuyến nghị |
