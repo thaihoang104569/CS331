@@ -148,9 +148,9 @@ def create_interface():
             gr.Markdown("### 2. Load LoRA Weights")
             with gr.Row():
                 lora_path = gr.Textbox(
-                    value="output/lora_weight.safetensors",
+                    value="adapter/lora_weight.safetensors",
                     label="LoRA Path",
-                    placeholder="output/lora_weight.safetensors"
+                    placeholder="adapter/lora_weight.safetensors"
                 )
             load_lora_btn = gr.Button("Load LoRA", variant="primary")
             lora_status = gr.Textbox(label="Status", interactive=False)
