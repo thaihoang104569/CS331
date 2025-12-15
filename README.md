@@ -30,9 +30,6 @@ cd gigi
 # Cài đặt dependencies
 pip install -r requirements.txt
 
-# Cài đặt package
-pip install -e .
-```
 
 ## Yêu cầu
 
