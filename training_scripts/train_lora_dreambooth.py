@@ -36,6 +36,7 @@ from lora_diffusion import (
     safetensors_available,
     save_lora_weight,
     save_safeloras,
+    tune_lora_scale,
 )
 from lora_diffusion.xformers_utils import set_use_memory_efficient_attention_xformers
 from PIL import Image
@@ -471,6 +472,12 @@ def parse_args(input_args=None):
         nargs="+",
         default=None,
         help="Prompts to use for generating sample images. If not provided, will use instance_prompt.",
+    )
+    parser.add_argument(
+        "--sample_lora_scale",
+        type=float,
+        default=0.8,
+        help="LoRA scale to use when generating sample images (0.0-1.0). Lower values reduce artifacts. Default: 0.8",
     )
 
     if input_args is not None:
@@ -1096,6 +1103,13 @@ def main(args):
                         )
                         sample_pipeline.to(accelerator.device)
                         sample_pipeline.set_progress_bar_config(disable=True)
+                        
+                        # Apply LoRA scale for sample generation
+                        tune_lora_scale(sample_pipeline.unet, args.sample_lora_scale)
+                        if args.train_text_encoder:
+                            tune_lora_scale(sample_pipeline.text_encoder, args.sample_lora_scale)
+                        
+                        print(f"Using LoRA scale: {args.sample_lora_scale} for sample generation")
                         
                         # Generate images for each prompt
                         for prompt_idx, prompt in enumerate(sample_prompts):
