@@ -453,6 +453,25 @@ def parse_args(input_args=None):
         default=None,
         help="Hugging Face token to avoid rate limiting (get from HF_TOKEN env or pass directly)",
     )
+    parser.add_argument(
+        "--sample_steps",
+        type=int,
+        default=100,
+        help="Generate sample images every X steps for monitoring.",
+    )
+    parser.add_argument(
+        "--num_sample_images",
+        type=int,
+        default=4,
+        help="Number of sample images to generate at each checkpoint.",
+    )
+    parser.add_argument(
+        "--sample_prompts",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Prompts to use for generating sample images. If not provided, will use instance_prompt.",
+    )
 
     if input_args is not None:
         args = parser.parse_args(input_args)
@@ -591,6 +610,15 @@ def main(args):
 
         if args.output_dir is not None:
             os.makedirs(args.output_dir, exist_ok=True)
+            # Create samples directory
+            samples_dir = os.path.join(args.output_dir, "samples")
+            os.makedirs(samples_dir, exist_ok=True)
+    
+    # Prepare sample prompts
+    if args.sample_prompts is None:
+        sample_prompts = [args.instance_prompt]
+    else:
+        sample_prompts = args.sample_prompts
 
     # Load the tokenizer
     if args.tokenizer_name:
@@ -865,6 +893,8 @@ def main(args):
     
     # Track loss for visualization
     loss_history = []
+    instance_loss_history = []
+    prior_loss_history = []
 
     for epoch in range(args.num_train_epochs):
         print(f"\n========== Starting Epoch {epoch + 1}/{args.num_train_epochs} ==========")
@@ -920,7 +950,7 @@ def main(args):
                 target, target_prior = torch.chunk(target, 2, dim=0)
 
                 # Compute instance loss
-                loss = (
+                instance_loss = (
                     F.mse_loss(model_pred.float(), target.float(), reduction="none")
                     .mean([1, 2, 3])
                     .mean()
@@ -932,9 +962,11 @@ def main(args):
                 )
 
                 # Add the prior loss to the instance loss.
-                loss = loss + args.prior_loss_weight * prior_loss
+                loss = instance_loss + args.prior_loss_weight * prior_loss
             else:
-                loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+                instance_loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+                prior_loss = None
+                loss = instance_loss
 
             accelerator.backward(loss)
             if accelerator.sync_gradients:
@@ -1025,6 +1057,70 @@ def main(args):
                                 break
 
                         last_save = global_step
+                
+                # Generate sample images for monitoring
+                if global_step % args.sample_steps == 0:
+                    if accelerator.is_main_process:
+                        print(f"\n=== Generating sample images at step {global_step} ===")
+                        
+                        accepts_keep_fp32_wrapper = "keep_fp32_wrapper" in set(
+                            inspect.signature(
+                                accelerator.unwrap_model
+                            ).parameters.keys()
+                        )
+                        extra_args = (
+                            {"keep_fp32_wrapper": True}
+                            if accepts_keep_fp32_wrapper
+                            else {}
+                        )
+                        
+                        # Create temporary pipeline for inference
+                        sample_pipeline = StableDiffusionPipeline.from_pretrained(
+                            args.pretrained_model_name_or_path,
+                            unet=accelerator.unwrap_model(unet, **extra_args),
+                            text_encoder=accelerator.unwrap_model(
+                                text_encoder, **extra_args
+                            ),
+                            revision=args.revision,
+                            torch_dtype=weight_dtype,
+                            safety_checker=None,
+                            resume_download=True,
+                            force_download=False,
+                            low_cpu_mem_usage=True,
+                            token=args.hf_token,
+                        )
+                        sample_pipeline.to(accelerator.device)
+                        sample_pipeline.set_progress_bar_config(disable=True)
+                        
+                        # Generate images for each prompt
+                        for prompt_idx, prompt in enumerate(sample_prompts):
+                            try:
+                                images = sample_pipeline(
+                                    prompt,
+                                    num_images_per_prompt=args.num_sample_images,
+                                    num_inference_steps=30,
+                                    guidance_scale=7.5,
+                                ).images
+                                
+                                # Save images
+                                for img_idx, image in enumerate(images):
+                                    safe_prompt = re.sub(r'[^\w\s-]', '', prompt)[:50].strip().replace(' ', '_')
+                                    image_path = os.path.join(
+                                        args.output_dir,
+                                        "samples",
+                                        f"step_{global_step:05d}_prompt_{prompt_idx}_img_{img_idx}.png"
+                                    )
+                                    image.save(image_path)
+                                    print(f"Saved sample: {image_path}")
+                            except Exception as e:
+                                print(f"Error generating sample for prompt '{prompt}': {e}")
+                        
+                        # Clean up
+                        del sample_pipeline
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                        
+                        print(f"=== Sample generation complete ===")
 
             logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
@@ -1032,6 +1128,11 @@ def main(args):
             
             # Track loss
             loss_history.append((global_step, logs["loss"]))
+            if args.with_prior_preservation:
+                instance_loss_history.append((global_step, instance_loss.detach().item()))
+                prior_loss_history.append((global_step, prior_loss.detach().item()))
+            else:
+                instance_loss_history.append((global_step, instance_loss.detach().item()))
 
             if global_step >= args.max_train_steps:
                 break
@@ -1068,29 +1169,63 @@ def main(args):
         if loss_history:
             try:
                 steps, losses = zip(*loss_history)
-                plt.figure(figsize=(10, 6))
-                plt.plot(steps, losses, alpha=0.6, label='Loss')
+                plt.figure(figsize=(12, 7))
                 
-                # Add smoothed line
+                # Plot total loss
+                plt.plot(steps, losses, alpha=0.5, color='blue', linewidth=1, label='Total Loss')
+                
+                # Add smoothed line for total loss
                 if len(losses) > 10:
                     window = max(len(losses) // 50, 10)
                     smoothed = []
                     for i in range(len(losses)):
                         start = max(0, i - window)
                         smoothed.append(sum(losses[start:i+1]) / (i - start + 1))
-                    plt.plot(steps, smoothed, color='red', linewidth=2, label='Smoothed')
+                    plt.plot(steps, smoothed, color='blue', linewidth=2, label='Total Loss (Smoothed)')
                 
-                plt.xlabel('Training Steps')
-                plt.ylabel('Loss')
-                plt.title('Training Loss')
-                plt.legend()
+                # Plot instance loss
+                if instance_loss_history:
+                    inst_steps, inst_losses = zip(*instance_loss_history)
+                    plt.plot(inst_steps, inst_losses, alpha=0.5, color='green', linewidth=1, label='Instance Loss')
+                    
+                    # Add smoothed line for instance loss
+                    if len(inst_losses) > 10:
+                        window = max(len(inst_losses) // 50, 10)
+                        inst_smoothed = []
+                        for i in range(len(inst_losses)):
+                            start = max(0, i - window)
+                            inst_smoothed.append(sum(inst_losses[start:i+1]) / (i - start + 1))
+                        plt.plot(inst_steps, inst_smoothed, color='green', linewidth=2, label='Instance Loss (Smoothed)')
+                
+                # Plot prior loss if using prior preservation
+                if prior_loss_history:
+                    prior_steps, prior_losses = zip(*prior_loss_history)
+                    plt.plot(prior_steps, prior_losses, alpha=0.5, color='orange', linewidth=1, label='Prior Loss')
+                    
+                    # Add smoothed line for prior loss
+                    if len(prior_losses) > 10:
+                        window = max(len(prior_losses) // 50, 10)
+                        prior_smoothed = []
+                        for i in range(len(prior_losses)):
+                            start = max(0, i - window)
+                            prior_smoothed.append(sum(prior_losses[start:i+1]) / (i - start + 1))
+                        plt.plot(prior_steps, prior_smoothed, color='orange', linewidth=2, label='Prior Loss (Smoothed)')
+                
+                plt.xlabel('Training Steps', fontsize=12)
+                plt.ylabel('Loss', fontsize=12)
+                plt.title('Training Loss Curves', fontsize=14, fontweight='bold')
+                plt.legend(loc='best', fontsize=10)
                 plt.grid(True, alpha=0.3)
                 
                 loss_plot_path = f"{args.output_dir}/loss_curve.png"
                 plt.savefig(loss_plot_path, dpi=150, bbox_inches='tight')
                 plt.close()
                 print(f"Loss curve saved to {loss_plot_path}")
-                print(f"Final loss: {losses[-1]:.4f}")
+                print(f"Final total loss: {losses[-1]:.4f}")
+                if instance_loss_history:
+                    print(f"Final instance loss: {inst_losses[-1]:.4f}")
+                if prior_loss_history:
+                    print(f"Final prior loss: {prior_losses[-1]:.4f}")
             except Exception as e:
                 print(f"Could not plot loss: {e}")
 
