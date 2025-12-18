@@ -1,20 +1,25 @@
-from setuptools import setup, find_packages
+import os
+
+import pkg_resources
+from setuptools import find_packages, setup
 
 setup(
     name="lora_diffusion",
-    version="0.1.0",
+    py_modules=["lora_diffusion"],
+    version="0.1.7",
+    description="Low Rank Adaptation for Diffusion Models - DreamBooth Training & Inference",
+    author="Simo Ryu",
     packages=find_packages(),
+    entry_points={
+        "console_scripts": [
+            "lora_add = lora_diffusion.cli_lora_add:main",
+        ],
+    },
     install_requires=[
-        "torch>=1.13.0",
-        "torchvision>=0.14.0",
-        "diffusers>=0.11.0",
-        "transformers>=4.25.1",
-        "accelerate>=0.15.0",
-        "safetensors>=0.3.0",
-        "pillow>=9.0.0",
-        "tqdm>=4.62.0",
-        "scipy",
-        "fire",
+        str(r)
+        for r in pkg_resources.parse_requirements(
+            open(os.path.join(os.path.dirname(__file__), "requirements.txt"))
+        )
     ],
-    python_requires=">=3.8",
+    include_package_data=True,
 )
