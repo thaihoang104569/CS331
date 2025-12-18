@@ -863,7 +863,12 @@ def main(args):
     # The trackers initializes automatically on the main process.
     print("Initializing trackers...")
     if accelerator.is_main_process:
-        accelerator.init_trackers("dreambooth", config=vars(args))
+        # Filter config to only include TensorBoard-compatible types
+        tracker_config = {}
+        for key, value in vars(args).items():
+            if value is not None and isinstance(value, (int, float, str, bool)):
+                tracker_config[key] = value
+        accelerator.init_trackers("dreambooth", config=tracker_config)
     print("Trackers initialized")
 
     # Train!
