@@ -479,6 +479,12 @@ def parse_args(input_args=None):
         default=0.8,
         help="LoRA scale to use when generating sample images (0.0-1.0). Lower values reduce artifacts. Default: 0.8",
     )
+    parser.add_argument(
+        "--sample_negative_prompt",
+        type=str,
+        default="ugly, blurry, low quality, distorted face, bad anatomy, bad hands, deformed, watermark",
+        help="Negative prompt to improve sample image quality. Use comma-separated unwanted features.",
+    )
 
     if input_args is not None:
         args = parser.parse_args(input_args)
@@ -1110,12 +1116,14 @@ def main(args):
                             tune_lora_scale(sample_pipeline.text_encoder, args.sample_lora_scale)
                         
                         print(f"Using LoRA scale: {args.sample_lora_scale} for sample generation")
+                        print(f"Using negative prompt: {args.sample_negative_prompt}")
                         
                         # Generate images for each prompt
                         for prompt_idx, prompt in enumerate(sample_prompts):
                             try:
                                 images = sample_pipeline(
                                     prompt,
+                                    negative_prompt=args.sample_negative_prompt,
                                     num_images_per_prompt=args.num_sample_images,
                                     num_inference_steps=30,
                                     guidance_scale=7.5,
@@ -1190,45 +1198,44 @@ def main(args):
                 steps, losses = zip(*loss_history)
                 plt.figure(figsize=(12, 7))
                 
-                # Plot total loss
-                plt.plot(steps, losses, alpha=0.5, color='blue', linewidth=1, label='Total Loss')
-                
-                # Add smoothed line for total loss
+                # Plot smoothed total loss
                 if len(losses) > 10:
                     window = max(len(losses) // 50, 10)
                     smoothed = []
                     for i in range(len(losses)):
                         start = max(0, i - window)
                         smoothed.append(sum(losses[start:i+1]) / (i - start + 1))
-                    plt.plot(steps, smoothed, color='blue', linewidth=2, label='Total Loss (Smoothed)')
+                    plt.plot(steps, smoothed, color='blue', linewidth=2.5, label='Total Loss')
+                else:
+                    plt.plot(steps, losses, color='blue', linewidth=2.5, label='Total Loss')
                 
-                # Plot instance loss
+                # Plot smoothed instance loss
                 if instance_loss_history:
                     inst_steps, inst_losses = zip(*instance_loss_history)
-                    plt.plot(inst_steps, inst_losses, alpha=0.5, color='green', linewidth=1, label='Instance Loss')
                     
-                    # Add smoothed line for instance loss
                     if len(inst_losses) > 10:
                         window = max(len(inst_losses) // 50, 10)
                         inst_smoothed = []
                         for i in range(len(inst_losses)):
                             start = max(0, i - window)
                             inst_smoothed.append(sum(inst_losses[start:i+1]) / (i - start + 1))
-                        plt.plot(inst_steps, inst_smoothed, color='green', linewidth=2, label='Instance Loss (Smoothed)')
+                        plt.plot(inst_steps, inst_smoothed, color='green', linewidth=2.5, label='Instance Loss')
+                    else:
+                        plt.plot(inst_steps, inst_losses, color='green', linewidth=2.5, label='Instance Loss')
                 
-                # Plot prior loss if using prior preservation
+                # Plot smoothed prior loss if using prior preservation
                 if prior_loss_history:
                     prior_steps, prior_losses = zip(*prior_loss_history)
-                    plt.plot(prior_steps, prior_losses, alpha=0.5, color='orange', linewidth=1, label='Prior Loss')
                     
-                    # Add smoothed line for prior loss
                     if len(prior_losses) > 10:
                         window = max(len(prior_losses) // 50, 10)
                         prior_smoothed = []
                         for i in range(len(prior_losses)):
                             start = max(0, i - window)
                             prior_smoothed.append(sum(prior_losses[start:i+1]) / (i - start + 1))
-                        plt.plot(prior_steps, prior_smoothed, color='orange', linewidth=2, label='Prior Loss (Smoothed)')
+                        plt.plot(prior_steps, prior_smoothed, color='orange', linewidth=2.5, label='Prior Loss')
+                    else:
+                        plt.plot(prior_steps, prior_losses, color='orange', linewidth=2.5, label='Prior Loss')
                 
                 plt.xlabel('Training Steps', fontsize=12)
                 plt.ylabel('Loss', fontsize=12)
