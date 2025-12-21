@@ -146,28 +146,10 @@ def generate_images(pipe, prompts, num_images_per_prompt=5, seed=42,
 
 def plot_comparison(results_base, results_finetuned, output_path):
     """Vẽ biểu đồ so sánh kết quả"""
-    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
     
-    # 1. Bar chart - Mean similarity
-    ax = axes[0, 0]
-    models = ['Base Model', 'Finetuned Model']
-    means = [results_base['mean_similarity'], results_finetuned['mean_similarity']]
-    
-    bars = ax.bar(models, means, alpha=0.7, color=['#ff6b6b', '#4ecdc4'])
-    ax.set_ylabel('Cosine Similarity', fontsize=12)
-    ax.set_title('Mean DINO Cosine Similarity (Higher = Better Identity Preservation)', fontsize=14, fontweight='bold')
-    ax.set_ylim([0, 1])
-    ax.grid(axis='y', alpha=0.3)
-    
-    # Thêm giá trị lên cột
-    for bar, mean in zip(bars, means):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 0.02,
-                f'{mean:.4f}',
-                ha='center', va='bottom', fontsize=11, fontweight='bold')
-    
-    # 2. Distribution comparison
-    ax = axes[0, 1]
+    # 1. Distribution comparison
+    ax = axes[0]
     ax.hist(results_base['similarities'], bins=30, alpha=0.6, label='Base Model', color='#ff6b6b', density=False)
     ax.hist(results_finetuned['similarities'], bins=30, alpha=0.6, label='Finetuned Model', color='#4ecdc4', density=False)
     ax.set_xlabel('Cosine Similarity', fontsize=12)
@@ -176,22 +158,8 @@ def plot_comparison(results_base, results_finetuned, output_path):
     ax.legend(fontsize=11)
     ax.grid(alpha=0.3)
     
-    # 3. Box plot
-    ax = axes[1, 0]
-    data_to_plot = [results_base['similarities'], results_finetuned['similarities']]
-    bp = ax.boxplot(data_to_plot, labels=models, patch_artist=True)
-    
-    colors = ['#ff6b6b', '#4ecdc4']
-    for patch, color in zip(bp['boxes'], colors):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.7)
-    
-    ax.set_ylabel('Cosine Similarity', fontsize=12)
-    ax.set_title('Box Plot Comparison', fontsize=14, fontweight='bold')
-    ax.grid(axis='y', alpha=0.3)
-    
-    # 4. Summary statistics table
-    ax = axes[1, 1]
+    # 2. Summary statistics table
+    ax = axes[1]
     ax.axis('tight')
     ax.axis('off')
     
