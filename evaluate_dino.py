@@ -47,7 +47,7 @@ class DINOEvaluator:
     @torch.no_grad()
     def extract_embedding(self, image):
         """Trích xuất DINO embedding từ ảnh PIL"""
-        if isinstance(image, str):
+        if isinstance(image, (str, Path)):
             image = Image.open(image).convert('RGB')
         elif isinstance(image, Image.Image):
             image = image.convert('RGB')
