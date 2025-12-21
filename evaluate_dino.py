@@ -166,7 +166,7 @@ def plot_comparison(results_base, results_finetuned, output_path):
     for bar, mean, std in zip(bars, means, stds):
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width()/2., height + std + 0.02,
-                f'{mean:.4f}±{std:.4f}',
+                f'{mean:.4f}',
                 ha='center', va='bottom', fontsize=11, fontweight='bold')
     
     # 2. Distribution comparison
@@ -208,8 +208,6 @@ def plot_comparison(results_base, results_finetuned, output_path):
          f"{(results_finetuned['max_similarity'] - results_base['max_similarity']):.4f}"],
         ['Min', f"{results_base['min_similarity']:.4f}", f"{results_finetuned['min_similarity']:.4f}", 
          f"{(results_finetuned['min_similarity'] - results_base['min_similarity']):.4f}"],
-        ['Median', f"{results_base['median_similarity']:.4f}", f"{results_finetuned['median_similarity']:.4f}", 
-         f"{(results_finetuned['median_similarity'] - results_base['median_similarity']):.4f}"],
     ]
     
     table = ax.table(cellText=table_data, cellLoc='center', loc='center',
@@ -404,10 +402,9 @@ def main():
     results_base = evaluator.evaluate_images(real_image_paths, base_images)
     
     print("\n--- BASE MODEL RESULTS ---")
-    print(f"Mean Similarity: {results_base['mean_similarity']:.4f} ± {results_base['std_similarity']:.4f}")
+    print(f"Mean Similarity: {results_base['mean_similarity']:.4f}")
     print(f"Max Similarity:  {results_base['max_similarity']:.4f}")
     print(f"Min Similarity:  {results_base['min_similarity']:.4f}")
-    print(f"Median:          {results_base['median_similarity']:.4f}")
     
     # Clean up base model to free memory
     del pipe_base
@@ -463,10 +460,9 @@ def main():
     results_finetuned = evaluator.evaluate_images(real_image_paths, finetuned_images)
     
     print("\n--- FINETUNED MODEL RESULTS ---")
-    print(f"Mean Similarity: {results_finetuned['mean_similarity']:.4f} ± {results_finetuned['std_similarity']:.4f}")
+    print(f"Mean Similarity: {results_finetuned['mean_similarity']:.4f}")
     print(f"Max Similarity:  {results_finetuned['max_similarity']:.4f}")
     print(f"Min Similarity:  {results_finetuned['min_similarity']:.4f}")
-    print(f"Median:          {results_finetuned['median_similarity']:.4f}")
     
     # ============ COMPARISON ============
     print("\n" + "="*70)
