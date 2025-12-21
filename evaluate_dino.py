@@ -168,10 +168,10 @@ def plot_comparison(results_base, results_finetuned, output_path):
     
     # 2. Distribution comparison
     ax = axes[0, 1]
-    ax.hist(results_base['similarities'], bins=30, alpha=0.6, label='Base Model', color='#ff6b6b', density=True)
-    ax.hist(results_finetuned['similarities'], bins=30, alpha=0.6, label='Finetuned Model', color='#4ecdc4', density=True)
+    ax.hist(results_base['similarities'], bins=30, alpha=0.6, label='Base Model', color='#ff6b6b', density=False)
+    ax.hist(results_finetuned['similarities'], bins=30, alpha=0.6, label='Finetuned Model', color='#4ecdc4', density=False)
     ax.set_xlabel('Cosine Similarity', fontsize=12)
-    ax.set_ylabel('Density', fontsize=12)
+    ax.set_ylabel('Count', fontsize=12)
     ax.set_title('Distribution of Cosine Similarities', fontsize=14, fontweight='bold')
     ax.legend(fontsize=11)
     ax.grid(alpha=0.3)
