@@ -255,6 +255,12 @@ def main():
         required=True,
         help="Path to LoRA weights (.pt or .safetensors)"
     )
+    parser.add_argument(
+        "--lora_alpha",
+        type=float,
+        default=1.0,
+        help="LoRA alpha/scale (0.0=no LoRA, 1.0=full LoRA, >1.0=over-apply). Default: 1.0"
+    )
     
     # Data arguments
     parser.add_argument(
@@ -430,6 +436,11 @@ def main():
         patch_unet=True,
     )
     
+    # Set LoRA alpha/scale
+    tune_lora_scale(pipe_finetuned.unet, args.lora_alpha)
+    tune_lora_scale(pipe_finetuned.text_encoder, args.lora_alpha)
+    print(f"LoRA alpha set to: {args.lora_alpha}")
+    
     print(f"\nGenerating images from finetuned model...")
     print(f"Using prompts with rare token: {args.finetuned_prompts}")
     finetuned_images = generate_images(
@@ -498,6 +509,7 @@ def main():
         'config': {
             'model_id': args.model_id,
             'lora_path': args.lora_path,
+            'lora_alpha': args.lora_alpha,
             'base_prompts': args.base_prompts,
             'finetuned_prompts': args.finetuned_prompts,
             'num_images_per_prompt': args.num_images_per_prompt,
