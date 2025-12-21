@@ -97,10 +97,8 @@ class DINOEvaluator:
         # Tính các metrics
         results = {
             'mean_similarity': float(np.mean(similarities)),
-            'std_similarity': float(np.std(similarities)),
             'max_similarity': float(np.max(similarities)),
             'min_similarity': float(np.min(similarities)),
-            'median_similarity': float(np.median(similarities)),
             'similarities': [float(s) for s in similarities],
             'num_real_images': len(real_images),
             'num_generated_images': len(generated_images),
@@ -154,18 +152,17 @@ def plot_comparison(results_base, results_finetuned, output_path):
     ax = axes[0, 0]
     models = ['Base Model', 'Finetuned Model']
     means = [results_base['mean_similarity'], results_finetuned['mean_similarity']]
-    stds = [results_base['std_similarity'], results_finetuned['std_similarity']]
     
-    bars = ax.bar(models, means, yerr=stds, capsize=10, alpha=0.7, color=['#ff6b6b', '#4ecdc4'])
+    bars = ax.bar(models, means, alpha=0.7, color=['#ff6b6b', '#4ecdc4'])
     ax.set_ylabel('Cosine Similarity', fontsize=12)
     ax.set_title('Mean DINO Cosine Similarity (Higher = Better Identity Preservation)', fontsize=14, fontweight='bold')
     ax.set_ylim([0, 1])
     ax.grid(axis='y', alpha=0.3)
     
     # Thêm giá trị lên cột
-    for bar, mean, std in zip(bars, means, stds):
+    for bar, mean in zip(bars, means):
         height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + std + 0.02,
+        ax.text(bar.get_x() + bar.get_width()/2., height + 0.02,
                 f'{mean:.4f}',
                 ha='center', va='bottom', fontsize=11, fontweight='bold')
     
@@ -202,8 +199,6 @@ def plot_comparison(results_base, results_finetuned, output_path):
         ['Metric', 'Base Model', 'Finetuned Model', 'Improvement'],
         ['Mean', f"{results_base['mean_similarity']:.4f}", f"{results_finetuned['mean_similarity']:.4f}", 
          f"{(results_finetuned['mean_similarity'] - results_base['mean_similarity']):.4f}"],
-        ['Std', f"{results_base['std_similarity']:.4f}", f"{results_finetuned['std_similarity']:.4f}", 
-         f"{(results_finetuned['std_similarity'] - results_base['std_similarity']):.4f}"],
         ['Max', f"{results_base['max_similarity']:.4f}", f"{results_finetuned['max_similarity']:.4f}", 
          f"{(results_finetuned['max_similarity'] - results_base['max_similarity']):.4f}"],
         ['Min', f"{results_base['min_similarity']:.4f}", f"{results_finetuned['min_similarity']:.4f}", 
