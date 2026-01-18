@@ -283,8 +283,8 @@ def create_interface():
                 - Seed -1 for random, or set specific number for reproducibility
                 
                 ## 📁 File Paths on Colab
-                - LoRA weights: `/content/gigi/output/lora_weight.safetensors`
-                - Loss curve: `/content/gigi/output/loss_curve.png`
+                - LoRA weights: `/content/CS331/output/lora_weight.safetensors`
+                - Loss curve: `/content/CS331/output/loss_curve.png`
                 """
             )
         

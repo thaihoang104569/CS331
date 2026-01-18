@@ -24,11 +24,12 @@ LoRA (Low-Rank Adaptation) là kỹ thuật fine-tuning hiệu quả:
 
 ```bash
 # Clone repository
-git clone https://github.com/thaihoang104569/gigi
-cd gigi
+git clone https://github.com/thaihoang104569/CS331
+cd CS331
 
 # Cài đặt dependencies
 pip install -r requirements.txt
+```
 
 
 ## Yêu cầu
@@ -210,8 +211,8 @@ image_after.save("after.png")
 python web_app.py
 
 # Google Colab
-!git clone https://github.com/thaihoang104569/gigi.git
-%cd gigi
+!git clone https://github.com/thaihoang104569/CS331.git
+%cd CS331
 !pip install -r requirements.txt
 !python web_app.py
 # Click vào public URL để dùng
@@ -223,6 +224,53 @@ Web interface cho phép:
 - Điều chỉnh alpha, steps, guidance scale
 - So sánh nhiều alpha values
 - Chạy trên Colab, truy cập từ bất kỳ thiết bị nào
+
+**Chi tiết `web_app.py` (gợi ý workflow nhanh):**
+- **Tab Setup**
+  - **Model ID**: base model trên Hugging Face (mặc định: `stablediffusionapi/realistic-vision-v51`)
+  - **HuggingFace Token** (tuỳ chọn): dùng khi model yêu cầu quyền truy cập
+  - **LoRA Path**: đường dẫn tới file `.safetensors` (VD: `adapter/lora_weight.safetensors` hoặc `output/my_lora/lora_weight.safetensors`)
+- **Tab Generate**
+  - **LoRA Alpha**: 0.0 = base, 0.8 = khuyến nghị, 1.0 = full, >1.0 có thể tạo artifacts
+  - **Steps / Guidance**: 30–50 steps và 7–10 guidance thường ổn cho portrait
+  - **Seed**: đặt số cụ thể để tái lập ảnh; `-1` = random
+  - **Width/Height**: mặc định 512; tăng lên 768/1024 sẽ tốn VRAM hơn
+- **Tab Batch Compare**: nhập danh sách alpha dạng `0.0, 0.3, 0.5, 0.7, 1.0` để tìm mức alpha đẹp nhất
+
+**Ghi chú (Local vs Colab):**
+- Trong `web_app.py` mặc định `share=True` để tạo public URL (phù hợp Colab). Nếu chạy local và không cần public URL, có thể đổi `share=False`.
+- Có thể set token bằng env var: `HF_TOKEN=...` (script có hỗ trợ đọc từ môi trường).
+
+### 4. Đánh giá chất lượng bằng DINOv2 (cosine similarity)
+
+File `evaluate_dino.py` tự động so sánh **base model** và **model + LoRA** bằng cách:
+- Sinh ảnh từ prompt (base prompts vs finetuned prompts)
+- Trích xuất embedding bằng **DINOv2 ViT-B/14**
+- Tính cosine similarity giữa ảnh sinh và ảnh thật (ground truth)
+
+Chạy nhanh:
+```bash
+python evaluate_dino.py \
+  --real_images_dir "my_training_data" \
+  --lora_path "output/my_lora/lora_weight.safetensors" \
+  --lora_alpha 0.8 \
+  --num_images_per_prompt 4 \
+  --output_dir "evaluation_results/run_01"
+```
+
+Tuỳ chọn hay dùng:
+- `--base_prompts`: prompt cho base model (không dùng rare token)
+- `--finetuned_prompts`: prompt cho LoRA (có rare token, VD: `sks person`)
+- `--num_inference_steps`, `--guidance_scale`, `--seed`: kiểm soát chất lượng và độ ổn định
+
+Kết quả được lưu trong `--output_dir`:
+- `base_model_images/` và `finetuned_model_images/`: ảnh sinh ra để soi trực quan
+- `evaluation_results.json`: thống kê `mean/max/min similarity` + config
+- `comparison_plot.png`: biểu đồ phân phối similarity và bảng so sánh
+
+**Cách đọc metric:** mean similarity của finetuned cao hơn base (và tăng đủ lớn) thường là dấu hiệu LoRA học được identity/style.
+
+**Lưu ý:** lần chạy đầu tiên sẽ tải model DINOv2 qua `torch.hub`, cần Internet và có thể hơi lâu.
 
 ## Tham số Training quan trọng
 
